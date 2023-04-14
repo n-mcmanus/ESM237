@@ -126,26 +126,28 @@ seq_clim_trend <- seq_clim %>%
   group_by(year) %>% 
   summarize(tmax_avg = mean(tmax, na.rm = T),
             tmin_avg = mean(tmin, na.rm = T),
-            precip = sum(prcp))
+            precip = sum(prcp, na.rm = T))
 
-### Plot values
-ggplot(seq_clim_trend, aes(x = year, y = tmax_avg)) +
-  geom_point(col="red") +
-  scale_y_continuous(limits = c(min(seq_clim_trend$tmin_avg), max(seq_clim_trend$tmax_avg))) +
-  geom_point(data = seq_clim_trend, aes(x = year, tmin_avg), col="blue")
-
-
-
+### Plot values for temp
 a = ggplot(seq_clim_trend, aes(x=year, tmax_avg)) +
   geom_point(col="red") +
   scale_y_continuous(limits=c(min(seq_clim_trend$tmin_avg), max(seq_clim_trend$tmax_avg))) +
   geom_point(data=seq_clim_trend, aes(x=year, tmin_avg), col="blue")
 
-# now lets add a trendd line
+# now lets add a trend line
 a = a + stat_smooth(method="lm", col="red")
 a
 a + stat_smooth(data=seq_clim_trend, aes(x=year,tmin_avg), col="blue", method="lm")
 
+
+### Plot values for precip
+b = ggplot(seq_clim_trend, aes(x=year, precip)) +
+  geom_point(col="red") +
+  scale_y_continuous(limits=c(min(seq_clim_trend$precip), max(seq_clim_trend$precip))) +
+  geom_point(data=seq_clim_trend, aes(x=year, precip), col="blue")
+
+b = b + stat_smooth(method = 'lm', col = 'red')
+b + stat_smooth(data = seq_clim_trend, aes(x=year, precip), col = 'blue', method = 'lm')
 ```
 
 
@@ -177,6 +179,21 @@ ggplot(seq_clim_trend, aes(x=year, y=tmax_avg)) +
 ```
 Max temps are increase at rate of 0.017 degrees per year, with significant p-value of 0.001
 
+Finally, let's look at precip
+```{r}
+res=lm(precip~year, data=seq_clim_trend)
+summary(res)
+confint(res,"year", level=0.95)
+
+ggplot(seq_clim_trend, aes(x=year, y=precip)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")
+```
+Looks like precipitation has decreased by -0.045 in/year, but not super significant (p-value: 0.181)
+
+
+#### Compare decades
 
 We might also cut the data into specific periods and see how the slope is changing as a function of time. We can see that some outliers more recently with the minimum temp data. 
 
@@ -219,7 +236,7 @@ ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)), aes(x=year
         axis.title=element_text(size=14, face="bold")) + 
   geom_smooth(method="lm")
 
-# last three decades
+# last four decades
 res_late=lm(tmax_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1980:2020)))
 summary(res_late)
 confint(res_late,"dt", level=0.90)
@@ -232,6 +249,34 @@ ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1980:2020)), aes(x=year
 ```
 
 Here we see that the earlier trend was slightly increasing (0.016F/year) with a p-value of 0.482, while in the recent couple decades we've seen warming (0.026F/year) with a p-value of 0.156. 
+
+Finally, let's see how precip differed
+```{r}
+### PRECIP split
+## early portion
+res_early=lm(precip~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1950)))
+summary(res_early)
+confint(res_early,"dt", level=0.90)
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1950)), aes(x=year, y=precip)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) + 
+  geom_smooth(method="lm")
+
+# last two decades
+res_late=lm(precip~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(2000:2020)))
+summary(res_late)
+confint(res_late,"dt", level=0.90)
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(2000:2020)), aes(x=year, y=precip)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")
+```
+In the earlier decades, annual precip changed by 0.11 in/year, but not significantly (p-value: 0.652)
+
+In recent decades, annual precip has decreased (-0.457in/year) but not quite significantly (p-value = 0.0968)
+
+
 
 
 ### Stats tests
@@ -257,4 +302,17 @@ t.test(subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1927:1960),
 wilcox.test(subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1927:1960), 
             subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1980:2020))
 ```
-These show there is a significant difference for both test, with a slightly lower p-value for the Wilcoxon test (0.005) thank the t-test (0.008)
+These show there is a significant difference for both test, with a slightly lower p-value for the Wilcoxon test (0.005) than the t-test (0.008).
+
+Finally, let's compare the precip.
+```{r}
+### PRECIP
+t.test(subset(seq_clim_trend$precip, seq_clim_trend$year %in% 1927:1950), 
+       subset(seq_clim_trend$precip, seq_clim_trend$year %in% 2000:2020))
+
+wilcox.test(subset(seq_clim_trend$precip, seq_clim_trend$year %in% 1927:1950), 
+            subset(seq_clim_trend$precip, seq_clim_trend$year %in% 2000:2020))
+```
+Here we see that the difference is fairly significant according to the t-test (p-value = 0.055) and some-what less significant according to the rank-sum test (p-value = 0.099)
+
+
