@@ -183,20 +183,20 @@ We might also cut the data into specific periods and see how the slope is changi
 ```{r subset, echo=TRUE}
 ### TMIN split
 ## early portion
-res_early=lm(tmin_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1980)))
+res_early=lm(tmin_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)))
 summary(res_early)
 confint(res_early,"dt", level=0.90)
-ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1980)), aes(x=year, y=tmin_avg)) + 
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)), aes(x=year, y=tmin_avg)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), 
         axis.title=element_text(size=14, face="bold")) + 
   geom_smooth(method="lm")
 
 # last two decades
-res_late=lm(tmin_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(2001:2015)))
+res_late=lm(tmin_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(2000:2020)))
 summary(res_late)
 confint(res_late,"dt", level=0.90)
-ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(2001:2020)), aes(x=year, y=tmin_avg)) + 
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(2000:2020)), aes(x=year, y=tmin_avg)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
   geom_smooth(method="lm")
@@ -204,26 +204,26 @@ ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(2001:2020)), aes(x=year
 
 ```
 
-Looking at the last two decades, minimum temps have increased by 0.16 F/year, but p-value only 0.121. In earlier period, decreased temperature (-0.012F/year) with a p-value of 0.292.
+Looking at the last two decades, minimum temps have increased by 0.16 F/year, but p-value only 0.097. In earlier period, decreased temperature (-0.025F/year) with a p-value of 0.335.
 
 Let's see if splitting up the max temp does anything. 
 ```{r}
 ### TMAX split
 ## early portion
-res_early=lm(tmax_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1950)))
+res_early=lm(tmax_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)))
 summary(res_early)
 confint(res_early,"dt", level=0.90)
-ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1950)), aes(x=year, y=tmax_avg)) + 
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)), aes(x=year, y=tmax_avg)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), 
         axis.title=element_text(size=14, face="bold")) + 
   geom_smooth(method="lm")
 
 # last three decades
-res_late=lm(tmax_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1975:2020)))
+res_late=lm(tmax_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1980:2020)))
 summary(res_late)
 confint(res_late,"dt", level=0.90)
-ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1975:2020)), aes(x=year, y=tmax_avg)) + 
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1980:2020)), aes(x=year, y=tmax_avg)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
   geom_smooth(method="lm")
@@ -231,6 +231,30 @@ ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1975:2020)), aes(x=year
 
 ```
 
-Here we see that the earlier trend was slightly cooling (-0.06F/year) with a p-value of 0.085, while in the recent couple decades we've seen warming (0.036F/year) with a p-value of 0.02. 
+Here we see that the earlier trend was slightly increasing (0.016F/year) with a p-value of 0.482, while in the recent couple decades we've seen warming (0.026F/year) with a p-value of 0.156. 
 
 
+### Stats tests
+So far we've used linear regression on data, which assumes normally distribute data. This may not be true for our data. 
+
+We'll see if the temperatures differ between early/late time periods significantly. We can do this with both a t-test, which assumes normal distribution, and a Mann-Whitney Wilcoxon test, which does not. 
+
+```{r}
+### TMIN
+t.test(subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 1927:1960), 
+       subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 2000:2020))
+
+wilcox.test(subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 1927:1960), 
+            subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 2000:2020))
+```
+
+Doesn't seem significant enough. Let's look at max temperature
+```{r}
+### TMAX
+t.test(subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1927:1960), 
+       subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1980:2020))
+
+wilcox.test(subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1927:1960), 
+            subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1980:2020))
+```
+These show there is a significant difference for both test, with a slightly lower p-value for the Wilcoxon test (0.005) thank the t-test (0.008)
