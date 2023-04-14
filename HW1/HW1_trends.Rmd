@@ -109,13 +109,23 @@ Now that the data has been cleaned up, it's time to actually do the trend analys
 
 So here let's try doing some aggregation to reduce the noise. As a simple example, we can try annual averages.
 
+First, let's determine how many NAs are in each year to determine if it's responsible to use average values even with NAs.
+```{r}
+seq_clim_nas <- seq_clim %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  group_by(year) %>% 
+  summarize(tmin_na = sum(is.na(tmin)),
+            tmax_na = sum(is.na(tmax)))
+```
+
+Looks fairly spread out, so let's make sure to not remove a whole year due to a couple NAs for temp.
 ```{r annual, echo=TRUE}
 ### Find avg min and max temps and total precip by year
 seq_clim_trend <- seq_clim %>% 
   mutate(year = lubridate::year(date)) %>% 
   group_by(year) %>% 
-  summarize(tmax_avg = mean(tmax, na.rm = F),
-            tmin_avg = mean(tmin, na.rm = F),
+  summarize(tmax_avg = mean(tmax, na.rm = T),
+            tmin_avg = mean(tmin, na.rm = T),
             precip = sum(prcp))
 
 ### Plot values
@@ -138,23 +148,89 @@ a + stat_smooth(data=seq_clim_trend, aes(x=year,tmin_avg), col="blue", method="l
 
 ```
 
-Now let's calculate the slope (or how quickly temperatures are rising; we do this with linear regression)
 
+Now let's calculate the slope for avg minimum temps:
 ```{r regressionline, echo=TRUE}
 
 
 res=lm(tmin_avg~year, data=seq_clim_trend)
 summary(res)
 confint(res,"year", level=0.95)
-ggplot(seq_clim_trend, aes(x=year, y=tmin_avg)) + stat_summary(fun.y="mean", geom="point", col="red", size=4)+theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) + geom_smooth(method="lm")
+
+ggplot(seq_clim_trend, aes(x=year, y=tmin_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")
+```
+Minimum temp is increasing by 0.0008 degrees F per year, but is not statistically significant (p = 0.89).
+
+Let's do the same for avg maximum temps:
+```{r}
+res=lm(tmax_avg~year, data=seq_clim_trend)
+summary(res)
+confint(res,"year", level=0.95)
+
+ggplot(seq_clim_trend, aes(x=year, y=tmax_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")
+```
+Max temps are increase at rate of 0.017 degrees per year, with significant p-value of 0.001
+
+
+We might also cut the data into specific periods and see how the slope is changing as a function of time. We can see that some outliers more recently with the minimum temp data. 
+
+```{r subset, echo=TRUE}
+### TMIN split
+## early portion
+res_early=lm(tmin_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1980)))
+summary(res_early)
+confint(res_early,"dt", level=0.90)
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1980)), aes(x=year, y=tmin_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) + 
+  geom_smooth(method="lm")
+
+# last two decades
+res_late=lm(tmin_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(2001:2015)))
+summary(res_late)
+confint(res_late,"dt", level=0.90)
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(2001:2020)), aes(x=year, y=tmin_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")
+
+
 ```
 
+Looking at the last two decades, minimum temps have increased by 0.16 F/year, but p-value only 0.121. In earlier period, decreased temperature (-0.012F/year) with a p-value of 0.292.
+
+Let's see if splitting up the max temp does anything. 
+```{r}
+### TMAX split
+## early portion
+res_early=lm(tmax_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1950)))
+summary(res_early)
+confint(res_early,"dt", level=0.90)
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1950)), aes(x=year, y=tmax_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) + 
+  geom_smooth(method="lm")
+
+# last three decades
+res_late=lm(tmax_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1975:2020)))
+summary(res_late)
+confint(res_late,"dt", level=0.90)
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1975:2020)), aes(x=year, y=tmax_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")
 
 
+```
 
-
-
-
-
+Here we see that the earlier trend was slightly cooling (-0.06F/year) with a p-value of 0.085, while in the recent couple decades we've seen warming (0.036F/year) with a p-value of 0.02. 
 
 
