@@ -1,0 +1,48 @@
+---
+title: "HW1: Chico Climate Trends"
+author: "Nick McManus"
+date: "2023-04-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+library(lubridate)
+library(Kendall)
+```
+
+
+```{r}
+### read in data
+chico_clim <- read_csv("Chico_GHCND_3301914.csv") %>% 
+  janitor::clean_names()
+head(chico_clim)
+
+### make sure date is correct class
+as.Date(chico_clim$date)
+# class(chico_clim$date)
+```
+
+
+### Running basic quality checks
+Now that we've read in the data, the next step is quality checking! Let's make a plot to see what data are missing. Some of the syntax used below:
+
+Lets start with daily data of air temperature 
+```{r dailyplots, echo=TRUE}
+
+ggplot(chico_clim, aes(date, tmax)) +
+  geom_line() + 
+  labs(y="Daily Maximum Temperature (degrees F)", x="Date")
+
+ggplot(chico_clim, aes(date, tmin))+
+  geom_line() + 
+  labs(y="Daily Minimum Temperature (degrees F)", x="Date")
+
+ggplot(chico_clim, aes(date, prcp)) +
+  geom_line() + 
+  labs(y="Daily Rainfall (in)", x="Date")
+
+```
