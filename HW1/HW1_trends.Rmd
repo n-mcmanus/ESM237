@@ -280,7 +280,25 @@ In recent decades, annual precip has decreased (-0.457in/year) but not quite sig
 
 
 ### Stats tests
-So far we've used linear regression on data, which assumes normally distribute data. This may not be true for our data. 
+
+Regression assumes a linear relationship - and normally distributed data - sometimes that isn't true, we can use non-parameteric tests to look for trends. In these cases, the Mann-Kendall test is commonly used.
+
+tau ranges from -1 to 1 and denotes the "strength" of the trend; p-value denotes significance. Strength however can not be interpreted as slope!
+
+```{r kendall, echo=TRUE}
+
+MannKendall(seq_clim_trend$tmin_avg)
+MannKendall(seq_clim_trend$tmax_avg)
+MannKendall(seq_clim_trend$precip)
+
+```
+
+TMIN: tau = 0.0597, 2-sided pvalue =0.39575
+TMAX: tau = 0.224, 2-sided pvalue =0.0013853
+PRECIP: tau = -0.0888, 2-sided pvalue =0.20621
+
+we can see that tmax has the strongest trend and is the most significant. Precipitation changes have the next strongest trend, though it's not quite as significant. 
+
 
 We'll see if the temperatures differ between early/late time periods significantly. We can do this with both a t-test, which assumes normal distribution, and a Mann-Whitney Wilcoxon test, which does not. 
 
@@ -314,5 +332,165 @@ wilcox.test(subset(seq_clim_trend$precip, seq_clim_trend$year %in% 1927:1950),
             subset(seq_clim_trend$precip, seq_clim_trend$year %in% 2000:2020))
 ```
 Here we see that the difference is fairly significant according to the t-test (p-value = 0.055) and some-what less significant according to the rank-sum test (p-value = 0.099)
+
+
+
+### Aggregation: seasonal!
+
+An alternative approach to aggregation (mean by year)
+is to look at a particular season, lets say we want to look only at summer (July and August)
+
+Min temp:
+```{r alternative, echo=TRUE}
+## create a variable
+seq_clim_season <- seq_clim %>% 
+  mutate(season = ifelse(month(date) %in% c(12,1,2), 1, ifelse(month(date) %in% c(3:5),2, ifelse(month(date) %in% c(6:8),3,4))))
+
+clim_byseason = seq_clim_season %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  group_by(year, season) %>% 
+  summarize(tmax_avg=mean(tmax), 
+            tmin_avg=mean(tmin), 
+            precip=sum(prcp))
+
+## look only at summer
+clim_summer = subset(clim_byseason, clim_byseason$season==3)
+
+```
+
+```{r}
+### TMIN
+
+## plot
+ggplot(clim_summer, aes(x=year, y=tmin_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4) +
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")+labs(y=" Summer Minimum Daily Temperature C")
+
+res=lm(tmin_avg~year, data=clim_summer)
+summary(res)
+confint(res,"wy", level=0.95)
+```
+
+
+Increase of 0.012F/year in the summer, but not significant (p-value = 0.192)
+
+Let's look at max temp:
+```{r}
+### TMAX
+
+##plot 
+ggplot(clim_summer, aes(x=year, y=tmax_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4) +
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")+labs(y=" Summer Minimum Daily Temperature C")
+
+res=lm(tmax_avg~year, data=clim_summer)
+summary(res)
+confint(res,"wy", level=0.95)
+```
+
+Summer max temps have significantly increased 0.218 F/year (p-value = 0.004)
+
+Now let's see how precipitation have changed over winters 
+```{r}
+## look only at winter
+clim_winter = subset(clim_byseason, clim_byseason$season==1)
+
+##plot 
+ggplot(clim_winter, aes(x=year, y=precip)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=2) +
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")+labs(y=" Summer Minimum Daily Temperature C")
+
+res=lm(precip~year, data=clim_winter)
+summary(res)
+confint(res,"wy", level=0.95)
+```
+Not a significant change (p-value = 0.838) of -0.006F/year. 
+
+
+Let's look at old/new differences by season
+
+```{r}
+### TMAX split
+## early portion
+res_early=lm(tmax_avg~year, data=subset(clim_summer, clim_summer$year %in% c(1927:1960)))
+summary(res_early)
+confint(res_early,"dt", level=0.90)
+ggplot(subset(clim_summer, clim_summer$year %in% c(1927:1960)), aes(x=year, y=tmax_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) + 
+  geom_smooth(method="lm")
+
+# last four decades
+res_late=lm(tmax_avg~year, data=subset(clim_summer, clim_summer$year %in% c(1980:2020)))
+summary(res_late)
+confint(res_late,"dt", level=0.90)
+ggplot(subset(clim_summer, clim_summer$year %in% c(1980:2020)), aes(x=year, y=tmax_avg)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")
+
+
+```
+Early time non-significantly decreased slightly. Newer time shows increase in average summer temps by 0.0671F/year (p-value = 0.011)
+
+```{r}
+### TMAX
+t.test(subset(clim_summer$tmax_avg, clim_summer$year %in% 1927:1960), 
+       subset(clim_summer$tmax_avg, clim_summer$year %in% 1980:2020))
+
+wilcox.test(subset(clim_summer$tmax_avg, clim_summer$year %in% 1927:1960), 
+            subset(clim_summer$tmax_avg, clim_summer$year %in% 1980:2020))
+```
+
+We can also see the difference between these two time periods is significantly different by t-test (p = 0.019) and rank-sum (p = 0.033).
+
+
+Now let's check for winter precipitation.
+```{r}
+### precip split
+## early portion
+res_early=lm(precip~year, data=subset(clim_winter, clim_winter$year %in% c(1927:1960)))
+summary(res_early)
+confint(res_early,"dt", level=0.90)
+ggplot(subset(clim_winter, clim_winter$year %in% c(1927:1960)), aes(x=year, y=precip)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) + 
+  geom_smooth(method="lm")
+
+# last four decades
+res_late=lm(precip~year, data=subset(clim_winter, clim_winter$year %in% c(1980:2020)))
+summary(res_late)
+confint(res_late,"dt", level=0.90)
+ggplot(subset(clim_winter, clim_winter$year %in% c(1980:2020)), aes(x=year, y=precip)) + 
+  stat_summary(fun="mean", geom="point", col="red", size=4)+
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) +
+  geom_smooth(method="lm")
+
+
+```
+
+Here we see a non-significant change in average winter precipitation levels by year for the early period. The later decades are also not sig (p-value = 0.19) for a -0.13in/year decline.
+
+Although these trends don't appear significant, maybe the difference in means are.
+
+```{r}
+### precip
+t.test(subset(clim_winter$precip, clim_winter$year %in% 1927:1960), 
+       subset(clim_winter$precip, clim_winter$year %in% 1980:2020))
+
+wilcox.test(subset(clim_winter$precip, clim_winter$year %in% 1927:1960), 
+            subset(clim_winter$precip, clim_winter$year %in% 1980:2020))
+```
+No significant difference in means. 
 
 
