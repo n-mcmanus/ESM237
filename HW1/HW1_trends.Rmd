@@ -12,6 +12,7 @@ library(tidyverse)
 library(here)
 library(lubridate)
 library(Kendall)
+library(cowplot)
 ```
 
 
@@ -130,24 +131,52 @@ seq_clim_trend <- seq_clim %>%
 
 ### Plot values for temp
 a = ggplot(seq_clim_trend, aes(x=year, tmax_avg)) +
-  geom_point(col="red") +
+  geom_point(col='firebrick3', alpha = 0.5, size = 1.6) +
   scale_y_continuous(limits=c(min(seq_clim_trend$tmin_avg), max(seq_clim_trend$tmax_avg))) +
-  geom_point(data=seq_clim_trend, aes(x=year, tmin_avg), col="blue")
+  geom_point(data=seq_clim_trend, aes(x=year, tmin_avg), 
+             col="dodgerblue4", alpha = 0.5, size = 1.6) +
+  theme_minimal() +
+  labs(x = element_blank(),
+       y = 'Temperature (F)') +
+  theme(
+    axis.title.y = element_text(vjust = 2, size = 11, face = 'bold'),
+    axis.text.x = element_text(size = 11, face = 'bold'),
+    axis.text.y = element_text(size = 11)
+  )
 
 # now lets add a trend line
-a = a + stat_smooth(method="lm", col="red")
-a
-a + stat_smooth(data=seq_clim_trend, aes(x=year,tmin_avg), col="blue", method="lm")
-
+a = a + stat_smooth(method="lm", col="firebrick")
+final_temp <- a + stat_smooth(data=seq_clim_trend, aes(x=year,tmin_avg), col="dodgerblue4", method="lm")
+final_temp
+## save plot
+ggsave(filename = 'avg_temps_sequoia.jpeg', plot = final_temp, width = 8, height = 5, units = "in")
 
 ### Plot values for precip
 b = ggplot(seq_clim_trend, aes(x=year, precip)) +
-  geom_point(col="red") +
   scale_y_continuous(limits=c(min(seq_clim_trend$precip), max(seq_clim_trend$precip))) +
-  geom_point(data=seq_clim_trend, aes(x=year, precip), col="blue")
+  geom_point(data=seq_clim_trend, aes(x=year, precip), 
+             col="darkorchid4", alpha = 0.5, size = 1.6) +
+  theme_minimal() +
+  labs(x = element_blank(),
+       y = "Precipitation (in)") +
+  theme(
+    axis.title.y = element_text(vjust = 2, size = 11, face = 'bold'),
+    axis.text.x = element_text(size = 11, face = 'bold'),
+    axis.text.y = element_text(size = 11)
+  )
 
-b = b + stat_smooth(method = 'lm', col = 'red')
-b + stat_smooth(data = seq_clim_trend, aes(x=year, precip), col = 'blue', method = 'lm')
+precip_final <- b + stat_smooth(data = seq_clim_trend, aes(x=year, precip), col = 'darkorchid4', method = 'lm')
+## save okit
+ggsave(filename = 'avg_precip_sequoia.jpeg', plot = precip_final, width = 8, height = 5, units = "in")
+
+
+### combine into one?
+  # plot_grid(final_temp, precip_final,
+  #           align = 'V',
+  #           ncol = 1,
+  #           labels = c('A', 'B'),
+  #           hjust = -.5,
+  #           vjust = 1)
 ```
 
 
@@ -203,7 +232,8 @@ We might also cut the data into specific periods and see how the slope is changi
 res_early=lm(tmin_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)))
 summary(res_early)
 confint(res_early,"dt", level=0.90)
-ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)), aes(x=year, y=tmin_avg)) + 
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)), 
+       aes(x=year, y=tmin_avg)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), 
         axis.title=element_text(size=14, face="bold")) + 
@@ -213,11 +243,12 @@ ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1927:1960)), aes(x=year
 res_late=lm(tmin_avg~year, data=subset(seq_clim_trend, seq_clim_trend$year %in% c(2000:2020)))
 summary(res_late)
 confint(res_late,"dt", level=0.90)
-ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(2000:2020)), aes(x=year, y=tmin_avg)) + 
+ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(2000:2020)), 
+       aes(x=year, y=tmin_avg)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
-  theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
+  theme(axis.text=element_text(size=14, face="bold"), 
+        axis.title=element_text(size=14, face="bold")) +
   geom_smooth(method="lm")
-
 
 ```
 
@@ -244,7 +275,6 @@ ggplot(subset(seq_clim_trend, seq_clim_trend$year %in% c(1980:2020)), aes(x=year
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) +
   geom_smooth(method="lm")
-
 
 ```
 
@@ -304,21 +334,21 @@ We'll see if the temperatures differ between early/late time periods significant
 
 ```{r}
 ### TMIN
-t.test(subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 1927:1960), 
+t.test(subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 1927:1950), 
        subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 2000:2020))
 
-wilcox.test(subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 1927:1960), 
+wilcox.test(subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 1927:1950), 
             subset(seq_clim_trend$tmin_avg, seq_clim_trend$year %in% 2000:2020))
 ```
 
 Doesn't seem significant enough. Let's look at max temperature
 ```{r}
 ### TMAX
-t.test(subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1927:1960), 
-       subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1980:2020))
+t.test(subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1927:1950), 
+       subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 2000:2020))
 
-wilcox.test(subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1927:1960), 
-            subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1980:2020))
+wilcox.test(subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 1927:1950), 
+            subset(seq_clim_trend$tmax_avg, seq_clim_trend$year %in% 2000:2020))
 ```
 These show there is a significant difference for both test, with a slightly lower p-value for the Wilcoxon test (0.005) than the t-test (0.008).
 
@@ -371,6 +401,7 @@ ggplot(clim_summer, aes(x=year, y=tmin_avg)) +
 res=lm(tmin_avg~year, data=clim_summer)
 summary(res)
 confint(res,"wy", level=0.95)
+
 ```
 
 
@@ -381,18 +412,28 @@ Let's look at max temp:
 ### TMAX
 
 ##plot 
-ggplot(clim_summer, aes(x=year, y=tmax_avg)) + 
-  stat_summary(fun="mean", geom="point", col="red", size=4) +
-  theme(axis.text=element_text(size=14, face="bold"), 
-        axis.title=element_text(size=14, face="bold")) +
-  geom_smooth(method="lm")+labs(y=" Summer Minimum Daily Temperature C")
+summer_tmax <- ggplot(clim_summer, aes(x=year, y=tmax_avg)) + 
+  stat_summary(fun="mean", geom="point", col="firebrick", size=1.6, alpha = 0.5) +
+  theme_minimal() +
+  geom_smooth(method="lm", col = 'firebrick4')+
+  labs(y = "Temperature (F)",
+       x = element_blank()) +
+  theme(
+    axis.title.y = element_text(vjust = 2, size = 11, face = 'bold'),
+    axis.text.x = element_text(size = 11, face = 'bold'),
+    axis.text.y = element_text(size = 11)
+  )
 
 res=lm(tmax_avg~year, data=clim_summer)
 summary(res)
 confint(res,"wy", level=0.95)
+
+## save plot
+ggsave(filename = 'summer_tmax_sequoia.jpeg', plot = summer_tmax, width = 8, height = 5, units = "in")
+
 ```
 
-Summer max temps have significantly increased 0.218 F/year (p-value = 0.004)
+Summer max temps have significantly increased 0.0218 F/year (p-value = 0.004)
 
 Now let's see how precipitation have changed over winters 
 ```{r}
@@ -400,15 +441,25 @@ Now let's see how precipitation have changed over winters
 clim_winter = subset(clim_byseason, clim_byseason$season==1)
 
 ##plot 
-ggplot(clim_winter, aes(x=year, y=precip)) + 
-  stat_summary(fun="mean", geom="point", col="red", size=2) +
-  theme(axis.text=element_text(size=14, face="bold"), 
-        axis.title=element_text(size=14, face="bold")) +
-  geom_smooth(method="lm")+labs(y=" Summer Minimum Daily Temperature C")
+winter_precip <- ggplot(clim_winter, aes(x=year, y=precip)) + 
+  stat_summary(fun="mean", geom="point", col="darkorchid3", size=1.6, alpha = 0.5) +
+   geom_smooth(method="lm", col = 'darkorchid4')+
+   labs(y = "Precipitation (in)",
+       x = element_blank()) +
+  theme_minimal()+
+   theme(
+    axis.title.y = element_text(vjust = 2, size = 11, face = 'bold'),
+    axis.text.x = element_text(size = 11, face = 'bold'),
+    axis.text.y = element_text(size = 11)
+  )
 
 res=lm(precip~year, data=clim_winter)
 summary(res)
 confint(res,"wy", level=0.95)
+
+## save plot
+ggsave(filename = 'winter_precip_sequoia.jpeg', plot = winter_precip, width = 8, height = 5, units = "in")
+
 ```
 Not a significant change (p-value = 0.838) of -0.006F/year. 
 
@@ -418,20 +469,20 @@ Let's look at old/new differences by season
 ```{r}
 ### TMAX split
 ## early portion
-res_early=lm(tmax_avg~year, data=subset(clim_summer, clim_summer$year %in% c(1927:1960)))
+res_early=lm(tmax_avg~year, data=subset(clim_summer, clim_summer$year %in% c(1927:1950)))
 summary(res_early)
 confint(res_early,"dt", level=0.90)
-ggplot(subset(clim_summer, clim_summer$year %in% c(1927:1960)), aes(x=year, y=tmax_avg)) + 
+ggplot(subset(clim_summer, clim_summer$year %in% c(1927:1950)), aes(x=year, y=tmax_avg)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), 
         axis.title=element_text(size=14, face="bold")) + 
   geom_smooth(method="lm")
 
 # last four decades
-res_late=lm(tmax_avg~year, data=subset(clim_summer, clim_summer$year %in% c(1980:2020)))
+res_late=lm(tmax_avg~year, data=subset(clim_summer, clim_summer$year %in% c(2000:2020)))
 summary(res_late)
 confint(res_late,"dt", level=0.90)
-ggplot(subset(clim_summer, clim_summer$year %in% c(1980:2020)), aes(x=year, y=tmax_avg)) + 
+ggplot(subset(clim_summer, clim_summer$year %in% c(2000:2020)), aes(x=year, y=tmax_avg)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), 
         axis.title=element_text(size=14, face="bold")) +
@@ -443,11 +494,11 @@ Early time non-significantly decreased slightly. Newer time shows increase in av
 
 ```{r}
 ### TMAX
-t.test(subset(clim_summer$tmax_avg, clim_summer$year %in% 1927:1960), 
-       subset(clim_summer$tmax_avg, clim_summer$year %in% 1980:2020))
+t.test(subset(clim_summer$tmax_avg, clim_summer$year %in% 1927:1950), 
+       subset(clim_summer$tmax_avg, clim_summer$year %in% 2000:2020))
 
-wilcox.test(subset(clim_summer$tmax_avg, clim_summer$year %in% 1927:1960), 
-            subset(clim_summer$tmax_avg, clim_summer$year %in% 1980:2020))
+wilcox.test(subset(clim_summer$tmax_avg, clim_summer$year %in% 1927:1950), 
+            subset(clim_summer$tmax_avg, clim_summer$year %in% 2000:2020))
 ```
 
 We can also see the difference between these two time periods is significantly different by t-test (p = 0.019) and rank-sum (p = 0.033).
@@ -457,20 +508,20 @@ Now let's check for winter precipitation.
 ```{r}
 ### precip split
 ## early portion
-res_early=lm(precip~year, data=subset(clim_winter, clim_winter$year %in% c(1927:1960)))
+res_early=lm(precip~year, data=subset(clim_winter, clim_winter$year %in% c(1927:1950)))
 summary(res_early)
 confint(res_early,"dt", level=0.90)
-ggplot(subset(clim_winter, clim_winter$year %in% c(1927:1960)), aes(x=year, y=precip)) + 
+ggplot(subset(clim_winter, clim_winter$year %in% c(1927:1950)), aes(x=year, y=precip)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), 
         axis.title=element_text(size=14, face="bold")) + 
   geom_smooth(method="lm")
 
 # last four decades
-res_late=lm(precip~year, data=subset(clim_winter, clim_winter$year %in% c(1980:2020)))
+res_late=lm(precip~year, data=subset(clim_winter, clim_winter$year %in% c(2000:2020)))
 summary(res_late)
 confint(res_late,"dt", level=0.90)
-ggplot(subset(clim_winter, clim_winter$year %in% c(1980:2020)), aes(x=year, y=precip)) + 
+ggplot(subset(clim_winter, clim_winter$year %in% c(2000:2020)), aes(x=year, y=precip)) + 
   stat_summary(fun="mean", geom="point", col="red", size=4)+
   theme(axis.text=element_text(size=14, face="bold"), 
         axis.title=element_text(size=14, face="bold")) +
@@ -485,12 +536,12 @@ Although these trends don't appear significant, maybe the difference in means ar
 
 ```{r}
 ### precip
-t.test(subset(clim_winter$precip, clim_winter$year %in% 1927:1960), 
-       subset(clim_winter$precip, clim_winter$year %in% 1980:2020))
+t.test(subset(clim_winter$precip, clim_winter$year %in% 1927:1950), 
+       subset(clim_winter$precip, clim_winter$year %in% 2000:2020))
 
-wilcox.test(subset(clim_winter$precip, clim_winter$year %in% 1927:1960), 
-            subset(clim_winter$precip, clim_winter$year %in% 1980:2020))
+wilcox.test(subset(clim_winter$precip, clim_winter$year %in% 1927:1950), 
+            subset(clim_winter$precip, clim_winter$year %in% 2000:2020))
 ```
-No significant difference in means. 
+No significant difference in means.
 
 
