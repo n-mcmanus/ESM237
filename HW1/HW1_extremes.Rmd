@@ -73,28 +73,82 @@ sequoia_freeze = sequoia_clim %>%
 
 
 # plot the number of freezing days between 1927 and 2020
-ggplot(data = sequoia_freeze, aes(x = year, y = n_freeze)) +
-  geom_point() +
-  labs(x = "Year",
-       y = "Number of Freezing Days") 
+freeze_days <- ggplot(data = sequoia_freeze, aes(x = year, y = n_freeze)) +
+  geom_point(col = 'dodgerblue4', size = 1.6, alpha = 0.5) +
+  labs(x = element_blank(),
+       y = "Days under 32 F (n)")+
+  stat_smooth(method = "lm", col = "dodgerblue4") +
+  theme_minimal()+
+  theme(
+    axis.title.y = element_text(vjust = 2, size = 11, face = 'bold'),
+    axis.text.x = element_text(size = 11, face = 'bold'),
+    axis.text.y = element_text(size = 11)
+  )
+
+## save plot
+# ggsave(filename = 'freeze_days_sequoia.jpeg', plot = freeze_days, width = 8, height = 5, units = "in")
+
 
 ```
 
 ## Extreme metrics: hottest day of the year
 ```{r}
+# how many days over 100?
+sequoia_clim$over_100 <- ifelse(sequoia_clim$tmax >= 100, 1, 0)
+
 # group data by year and put into a new dataframe
 sequoia_peak <- sequoia_clim %>% 
   mutate(year = lubridate::year(date)) %>% 
   group_by(year) %>% 
-  summarize(hottest_day = max(tmax)) %>%
+  summarize(hottest_day = max(tmax),
+            over_100 = sum(over_100)) %>%
   drop_na()  
 
+
 # plot the hottest day of the year  between 1927 and 2020
-ggplot(data = sequoia_peak, aes(x = year, y = hottest_day)) +
-  geom_point() +
-  labs(x = "Year",
-       y = "Temperature of Hottest Day of the Year")  #
+hottest_day <- ggplot(data = sequoia_peak, aes(x = year, y = hottest_day)) +
+  geom_point(col = 'firebrick3', size = 1.6, alpha = 0.5) +
+  labs(x = element_blank(),
+       y = "Temperature of Hottest Day of the Year (F)")+
+  stat_smooth(method = "lm", col = "firebrick") +
+  theme_minimal()+
+  theme(
+    axis.title.y = element_text(vjust = 2, size = 11, face = 'bold'),
+    axis.text.x = element_text(size = 11, face = 'bold'),
+    axis.text.y = element_text(size = 11)
+  )
+
+# plot number of days over 100 between 1927 and 2020
+days_over_100 <- ggplot(data = sequoia_peak, aes(x = year, y = over_100)) +
+  geom_point(col = 'firebrick3', size = 1.6, alpha = 0.5) +
+  labs(x = element_blank(),
+       y = "Days over 100 F (n)")+
+  stat_smooth(method = "lm", col = "firebrick") +
+  theme_minimal()+
+  theme(
+    axis.title.y = element_text(vjust = 2, size = 11, face = 'bold'),
+    axis.text.x = element_text(size = 11, face = 'bold'),
+    axis.text.y = element_text(size = 11)
+  )
+
+## save plot
+ggsave(filename = 'freeze_days_sequoia.jpeg', plot = freeze_days, width = 8, height = 5, units = "in")
 ```
+
+```{r}
+### combine into one?
+combo <- plot_grid(freeze_days, days_over_100,
+            align = 'V',
+            ncol = 1,
+            labels = c('A', 'B'),
+            hjust = -.5,
+            vjust = 1.5)
+
+## save plot
+ggsave(filename = 'extreme_days_sequoia.jpeg', plot = combo, width = 8, height = 6, units = "in")
+```
+
+
 
 ## Extreme metrics: (something with precipitation/ drought?)
 ```{r}
