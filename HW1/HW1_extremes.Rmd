@@ -23,6 +23,33 @@ as.Date(sequoia_clim$date)
 
 ```
 
+Deal with NAs
+```{r}
+### max temp
+## values are either NA or not reasonable for that location (here, below 30F)
+fillrow = which(is.na(sequoia_clim$tmax) | sequoia_clim$tmax <= 30)
+fillrow = fillrow[2:length(fillrow)]
+sequoia_clim$tmax[fillrow]=(sequoia_clim$tmax[fillrow+1]+sequoia_clim$tmax[fillrow-1])/2
+ggplot(sequoia_clim, aes(date, sequoia_clim$tmax))+
+  geom_line()+ 
+  labs(y="Daily Maximum Temperature (degrees F)", x="Date")
+
+### min temp
+## appears that there is at least one min temp value that is incorrect
+fillrow = which(is.na(sequoia_clim$tmin) | sequoia_clim$tmin <= 15)
+fillrow = fillrow[2:length(fillrow)]
+sequoia_clim$tmin[fillrow]=(sequoia_clim$tmin[fillrow+1]+sequoia_clim$tmin[fillrow-1])/2
+ggplot(sequoia_clim, aes(date, sequoia_clim$tmin))+
+  geom_line()+ 
+  labs(y="Daily Maximum Temperature (degrees F)", x="Date")
+
+### precip
+fillrow = which((is.na(sequoia_clim$prcp)) & sequoia_clim$tmax >= 70)
+## fill in data in the missing rows with zeros
+sequoia_clim$prcp[fillrow]=0
+```
+
+
 ## Extreme metrics: number of freezing days
 
 Freezing days are defined as the number of days (per year) with minimum temperatures below freezing (32 degrees F)
@@ -36,10 +63,14 @@ sequoia_clim$freeze <- ifelse(sequoia_clim$tmin <= 32, 1, 0) # if yes, value of 
 sequoia_freeze = sequoia_clim %>% 
   mutate(year = lubridate::year(date)) %>% 
   group_by(year) %>% 
-  summarize(n_freeze =sum(freeze)) %>%
+  summarize(n_freeze =sum(freeze, na.rm = T)) %>%
   drop_na()  
 
-sequoia_freeze$dt = unique(year) #unsure what to do about this, was in sam's code
+# sequoia_freeze$dt = unique(year) #unsure what to do about this, was in sam's code
+    ### Yeah idk her code was weird in parts. She's trying to create a column
+    ### with just the year, but I just did that with mutate and lubridate
+    ### in the code above. 
+
 
 # plot the number of freezing days between 1927 and 2020
 ggplot(data = sequoia_freeze, aes(x = year, y = n_freeze)) +
@@ -70,10 +101,13 @@ ggplot(data = sequoia_peak, aes(x = year, y = hottest_day)) +
 # return period
 
 # assign a new field to the climate table called "flood" using an `ifelse` statement
-sequoia_clim$flood <- ifelse(sequoia_clim$prcp >= 1, 1, 0) %>% 
+sequoia_clim$flood <- ifelse(sequoia_clim$prcp >= 1, 1, 0) 
+mutate(sequoia_clim, year = lubridate::year(date))
 
-   
-unique(sequoia_clim$flood)
+nyrs = length(unique(year(sequoia_clim$date)))
+  # [1] 94
+retper=(nyrs+1)/sum(sequoia_clim$flood,na.rm=TRUE)
+  # [1] 0.138484
 ```
 
 
