@@ -148,6 +148,22 @@ combo <- plot_grid(freeze_days, days_over_100,
 ggsave(filename = 'extreme_days_sequoia.jpeg', plot = combo, width = 8, height = 6, units = "in")
 ```
 
+Some stats
+```{r}
+### Linear regressions
+
+## days under 32
+res_32=lm(n_freeze~year, data=sequoia_freeze)
+summary(res_32)
+
+## days over 100
+res_100=lm(over_100~year, data=sequoia_peak)
+summary(res_100)
+
+### Mann-Kendall tests
+MannKendall(sequoia_freeze$n_freeze)
+MannKendall(sequoia_peak$over_100)
+```
 
 
 ## Extreme metrics: (something with precipitation/ drought?)
