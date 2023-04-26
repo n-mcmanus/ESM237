@@ -41,13 +41,13 @@ library(lattice)
 library(abind)
 
 # path and filename for data
-ncpath <- "~/Box Sync/Courses_UCSB/ESM237_Spring2023/"   # path (directory)
+ncpath <- ""   # path (directory)
 ncname <- "b.e11.B20TRC5CNBDRD.f09_g16.102.cam.h0.TS.192001-200512.nc"  # CESM1 filename
 ncfname <- paste(ncpath, ncname, sep="")
 dname <- "TS"  # this is the name of the variable you want to look at
 
 ncin <- nc_open(ncfname)
-#print(ncin)
+print(ncin)
 ```
 
 
@@ -142,7 +142,7 @@ Here is a brief demonstration of how to read in data from E3SM; once you do, you
 
 ```{r reade3sm}
 # path and filename for data
-ncpath <- "~/Box Sync/Courses_UCSB/ESM237_Spring2023/"   # path (directory)
+ncpath <- ""   # path (directory)
 dname <- "tas"  # this is the name of the variable you want to look at
 
 ncname1 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_185001-187412.nc"  # E3SM filename
@@ -188,4 +188,17 @@ tas1 <- ncvar_get(ncin_e3sm1, "tas")
 tas2 <- ncvar_get(ncin_e3sm2, "tas")
 
 tas=abind(tas1,tas2,along=1)
+```
+
+```{r getregion}
+lats=which(lat >= 32 & lat <= 35)
+lons=which(lon >= 241 & lon <= 243)
+
+tsavg <- apply(tas[lons,lats,],3,mean)
+
+clim <- data.frame(time=rtime, tsavg=tsavg)
+yrclim = clim %>% group_by(year(rtime)) %>% summarize(Tann=mean(tsavg))
+yrclim$dt = unique(year(rtime))
+
+ggplot(yrclim, aes(dt, Tann-273.15))+geom_point()+labs(y="Southern CA Temperature", x="Year")+ geom_smooth(method="lm")
 ```

@@ -7,5 +7,89 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+### Read in necessary packages
+library(lubridate)
+library(ggplot2)
 library(tidyverse)
+library(chron)
+library(ncdf4)  ##netCDF files
+library(RColorBrewer)
+library(lattice)
+library(abind)
 ```
+
+
+## Read in data
+
+```{r}
+# path and filename for data
+ncpath <- "data/"   # path (directory)
+ncname <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_185001-190012.nc"  # CESM1 filename
+ncfname <- paste(ncpath, ncname, sep="")
+dname <- "ts"  # this is the name of the variable you want to look at
+
+ncin <- nc_open(ncfname)
+print(ncin)
+```
+
+
+Historical data for NASA GISS
+
+```{r}
+# path and filename for data
+ncpath <- "data/"   # path (directory)
+dname <- "ts"  # this is the name of the variable you want to look at
+
+ncname1 <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_185001-190012.nc"
+ncname2 <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_190101-195012.nc"
+ncname3 <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_195101-200012.nc"
+ncname4 <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_200101-201412.nc"
+
+ncfname1 <- paste(ncpath, ncname1, sep="")
+ncfname2 <- paste(ncpath, ncname2, sep="")
+ncfname3 <- paste(ncpath, ncname3, sep="")
+ncfname4 <- paste(ncpath, ncname4, sep="")
+
+ncin_giss1 <- nc_open(ncfname1)
+ncin_giss2 <- nc_open(ncfname2)
+ncin_giss3 <- nc_open(ncfname3)
+ncin_giss4 <- nc_open(ncfname4)
+# print(ncin_giss1)
+```
+
+
+Now once again, we read in the time coordinate information. We need to concatenate the time information from the files to get a time series of the full time period:
+
+```{r}
+time1 <- ncvar_get(ncin_giss1,"time")
+tunits1 <- ncatt_get(ncin_giss1,"time","units")
+time2 <- ncvar_get(ncin_giss2,"time")
+tunits2 <- ncatt_get(ncin_giss2,"time","units")
+time3 <- ncvar_get(ncin_giss3,"time")
+tunits3 <- ncatt_get(ncin_giss3,"time","units")
+time4 <- ncvar_get(ncin_giss4,"time")
+tunits4 <- ncatt_get(ncin_giss4,"time","units")
+
+time=c(time1,time2,time3,time4)
+print(tunits4)
+```
+Use chron package to split up the "tunits" values (which is a string) into year, month, and day
+
+```{r}
+tustr <- strsplit(tunits1$value, " ")
+tdstr <- strsplit(unlist(tustr)[3], "-")
+tmonth <- as.integer(unlist(tdstr)[2])
+tday <- as.integer(unlist(tdstr)[3])
+tyear <- as.integer(unlist(tdstr)[1])
+rtime <- chron(time1,origin=c(tmonth, tday, tyear))
+```
+
+
+
+
+
+
+
+
+
