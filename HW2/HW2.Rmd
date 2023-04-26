@@ -1,0 +1,11 @@
+---
+title: "HW2"
+author: "Nick McManus"
+date: "2023-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
