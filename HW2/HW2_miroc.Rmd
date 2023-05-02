@@ -1,0 +1,214 @@
+---
+title: 'HW2: MIROC climate model'
+author: "Katheryn Moya"
+date: "5/2/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+### Read in necessary packages
+library(lubridate)
+library(ggplot2)
+library(tidyverse)
+library(chron)
+library(ncdf4)  ##netCDF files
+library(RColorBrewer)
+library(lattice)
+library(abind)
+```
+
+
+```{r}
+# path and filename for data
+miroc_hist <- "/Users/katherynmoya/Documents/MESM Year 2/ESM237/ESM237/HW2/data/ts_Amon_MIROC-ES2L_historical_r9i1p1f2_gn_185001-201412.nc"   
+
+miroc_ssp3 <- "/Users/katherynmoya/Documents/MESM Year 2/ESM237/ESM237/HW2/data/ts_Amon_MIROC-ES2L_ssp370_r8i1p1f2_gn_201501-210012.nc"  # CESM1 filename
+
+miroc_ssp5 <- "/Users/katherynmoya/Documents/MESM Year 2/ESM237/ESM237/HW2/data/ts_Amon_MIROC-ES2L_ssp585_r9i1p1f2_gn_201501-210012.nc"   
+
+dname <- "ts"  # this is the name of the variable you want to look at
+
+```
+
+# Read in the data
+```{r}
+# MIROC historical
+
+miroc_hist <- nc_open(miroc_hist)
+
+# MIROC SSP3
+
+miroc_ssp3 <- nc_open(miroc_ssp3)
+
+# MIROC SSP5
+
+miroc_ssp5 <- nc_open(miroc_ssp5)
+
+print(miroc_hist)
+print(miroc_ssp3)
+print(miroc_ssp5)
+```
+
+# Wrangle data
+
+## Time
+```{r}
+# Adjust the time for each file
+
+time_hist <- ncvar_get(miroc_hist,"time")
+
+time_units_hist <- ncatt_get(miroc_hist,"time","units")
+
+time_ssp3 <- ncvar_get(miroc_ssp3,"time")
+
+time_units_ssp3 <- ncatt_get(miroc_ssp3,"time","units")
+
+time_ssp5 <- ncvar_get(miroc_ssp5,"time")
+
+time_units_ssp5 <- ncatt_get(miroc_ssp5,"time","units")
+
+# Concatenate the historical data with the two SSP scenario datasets
+
+time_ssp3=c(time_hist,time_ssp3)
+time_ssp5=c(time_hist,time_ssp5)
+
+# Split the time
+tustr <- strsplit(time_units_hist$value, " ")
+tdstr <- strsplit(unlist(tustr)[3], "-")
+tmonth <- as.integer(unlist(tdstr)[2])
+tday <- as.integer(unlist(tdstr)[3])
+tyear <- as.integer(unlist(tdstr)[1])
+
+# Use "chron" to make a time that works
+
+rtime_ssp3 <- chron(time_ssp3, origin=c(tmonth, tday, tyear))
+rtime_ssp5 <- chron(time_ssp5, origin=c(tmonth, tday, tyear))
+
+```
+
+## Temperature
+
+```{r}
+# Stick temperature data together
+
+ts1 <- ncvar_get(miroc_hist, "ts")
+ts2 <- ncvar_get(miroc_ssp3, "ts")
+ts3 <- ncvar_get(miroc_ssp5, "ts")
+
+# Bind the temperature together for each scenario
+
+ts_ssp3=abind(ts1, ts2)
+ts_ssp5= abind(ts1, ts3)
+```
+
+## Latitude and Longitude
+
+```{r}
+lon <- ncvar_get(miroc_hist,"lon")
+nlon <- dim(lon)
+lat <- ncvar_get(miroc_hist,"lat")
+nlat <- dim(lat)
+
+
+head(lat)
+head(lon)
+# Select Location: southern CA? (for now, using Sam's coordinates)
+
+# Choose your location (these are for Spain)
+lats=which(lat >= -20 & lat <= 5)
+lons=which(lon >= 45 & lon <= 75)
+
+#average the data
+tsavg_ssp3 <- apply(ts_ssp3[lons,lats,],3,mean)
+tsavg_ssp5 <- apply(ts_ssp5[lons,lats,],3,mean)
+```
+
+# Map the two models
+
+```{r}
+
+```
+
+# Read in data for graphing
+
+```{r}
+# make a graphical df
+
+# SSP3
+clim_ssp3 <- data.frame(time=rtime_ssp5, tsavg_ssp3=tsavg_ssp3)
+yrclim_ssp3_c = clim_ssp3 %>% 
+  group_by(year(rtime_ssp5)) %>% 
+  summarize(Tann=mean(tsavg_ssp3))
+yrclim_ssp3_c$dt = unique(year(rtime_ssp5))
+
+#SSP5
+
+clim_ssp5 <- data.frame(time=rtime_ssp5, tsavg_ssp5=tsavg_ssp5)
+yrclim_ssp5_c = clim_ssp5 %>% 
+  group_by(year(rtime_ssp5)) %>% 
+  summarize(Tann=mean(tsavg_ssp5))
+yrclim_ssp5_c$dt = unique(year(rtime_ssp5))
+
+#subset the historical data
+
+c_clim_hist <- yrclim_ssp3_c %>% 
+  filter(dt <= 2014)
+
+#subset the SSP3 data
+c_clim_ssp3 <- yrclim_ssp3_c %>% 
+  filter(dt > 2014)
+
+#subset the SSP5 data
+
+c_clim_ssp5 <- yrclim_ssp5_c %>% 
+  filter(dt > 2014)
+
+# run linear regression to compare slopes
+
+c_clim_hist_lm <- lm((Tann-273.15)~dt,data=c_clim_hist)
+c_clim_ssp3_lm <- lm((Tann-273.15)~dt,data=c_clim_ssp3)
+c_clim_ssp5_lm <- lm((Tann-273.15)~dt,data=c_clim_ssp5)
+```
+
+# Visualize data
+
+```{r}
+
+# nice plot
+ggplot() +
+  theme_minimal() +
+  labs(y="Temperature (C)\n", 
+       x="\nYear", 
+       title = "MIROC-E2SL Historical & Projected Surface Temperature Trends for the Amazon Biome") + 
+  theme(plot.title = element_text(hjust=0.3,family="sans"),
+        axis.title.x = element_text(family="sans"),
+        axis.title.y = element_text(family="sans")) +
+  xlim(1850,2100) +
+  geom_smooth(data=yrclim_ssp3_c, aes(dt, Tann-273.15),col = '#2274A5',fill="#2274A5") +
+  geom_smooth(data=yrclim_ssp5_c, aes(dt, Tann-273.15), col = '#efa947',fill="#efa947") +
+  geom_vline(xintercept=2014,linetype="dashed") +
+  annotate("text", label = "Historical Model\n1900-2014", x = 1950, y = 17.5, size = 4, colour = "black", family = "Avenir") +
+  annotate("text", label = "SSP3-7", x = 2075, y = 23, size = 4, colour = "#efa947", family = "sans") +
+  annotate("text", label = "SSP5-8.5", x = 2090, y = 19.5, size = 4, colour = "#2274A5", family = "sans")
+
+#not nice plot
+ggplot() +
+  geom_line(data = yrclim_ssp3_c, aes(x = dt, y = Tann - 273.15, color = "red")) +
+  geom_line(data = yrclim_ssp5_c, aes(x = dt, y = Tann - 273.15, color = 'blue')) +
+  labs(y = "Concordia Station Temperature (degrees C)", x = "Year", title = "Mean Surface Air Temperature Change in Concordia Station, Antartica", subtitle = "Models Used: NASA GISS-E2.1-G and NASA GISS-E2.1-H", caption = "Smoothing Method Employed: Linear Regression", color = "Legend") + 
+  geom_smooth(method = "lm") +
+  geom_vline(xintercept = 2014, linetype = "dashed") + 
+  scale_color_manual(values = c('blue', 'cadetblue3', 'darkgoldenrod1', 'chocolate1')) +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        legend.position = "right", 
+        legend.title = element_text(size = 14, face = "bold"),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(1.5, "lines"),
+        legend.margin = margin(t = 0, b = 0, r = 10, l = 10),
+        legend.box.just = "right")
+
+```
+
