@@ -41,7 +41,7 @@ library(lattice)
 library(abind)
 
 # path and filename for data
-ncpath <- ""   # path (directory)
+ncpath <- "~/Box Sync/Courses_UCSB/ESM237_Spring2023/"   # path (directory)
 ncname <- "b.e11.B20TRC5CNBDRD.f09_g16.102.cam.h0.TS.192001-200512.nc"  # CESM1 filename
 ncfname <- paste(ncpath, ncname, sep="")
 dname <- "TS"  # this is the name of the variable you want to look at
@@ -93,7 +93,7 @@ tdstr <- strsplit(unlist(tustr)[3], "-")
 tmonth <- as.integer(unlist(tdstr)[2])
 tday <- as.integer(unlist(tdstr)[3])
 tyear <- as.integer(unlist(tdstr)[1])
-rtime <- chron(time,origin=c(tmonth, tday, tyear))
+rtime_cesm <- chron(time,origin=c(tmonth, tday, tyear))
 ```
 
 OK now let's read in the CESM temperature data! This may take a while, depending on your computer and the size of the data file. It's also a good idea to get some attributes of the data: the full name ("long_name"), units, and the value used to fill in places where there are no data ("_FillValue"). 
@@ -127,13 +127,13 @@ The R 'apply' function lets us compute the average over the region easily; here 
 lats=which(lat >= 32 & lat <= 35)
 lons=which(lon >= 241 & lon <= 243)
 
-tsavg <- apply(TS[lons,lats,],3,mean)
+tsavg_cesm <- apply(TS[lons,lats,],3,mean)
 
-clim <- data.frame(time=rtime, tsavg=tsavg)
-yrclim = clim %>% group_by(year(rtime)) %>% summarize(Tann=mean(tsavg))
-yrclim$dt = unique(year(rtime))
+clim <- data.frame(time=rtime_cesm, tsavg_cesm=tsavg_cesm)
+yrclim_cesm = clim %>% group_by(year(rtime_cesm)) %>% summarize(Tann=mean(tsavg_cesm))
+yrclim_cesm$dt = unique(year(rtime_cesm))
 
-ggplot(yrclim, aes(dt, Tann-273.15))+geom_point()+labs(y="Southern CA Temperature", x="Year")+ geom_smooth(method="lm")
+ggplot(yrclim_cesm, aes(dt, Tann-273.15))+geom_point()+labs(y="Southern CA Temperature", x="Year")+ geom_smooth(method="lm")
 ```
 
 Part 2: E3SM Data
@@ -142,7 +142,7 @@ Here is a brief demonstration of how to read in data from E3SM; once you do, you
 
 ```{r reade3sm}
 # path and filename for data
-ncpath <- ""   # path (directory)
+ncpath <- "~/Box Sync/Courses_UCSB/ESM237_Spring2023/"   # path (directory)
 dname <- "tas"  # this is the name of the variable you want to look at
 
 ncname1 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_185001-187412.nc"  # E3SM filename
@@ -190,15 +190,96 @@ tas2 <- ncvar_get(ncin_e3sm2, "tas")
 tas=abind(tas1,tas2,along=1)
 ```
 
-```{r getregion}
+After you have the concatenated data file, you can do exactly the same things that we did in the previous example to extract lat/lon information and create a time series - but now this time series will contain information from the entire period covered by the combination of BOTH files. 
+
+
+Part 3: Combining Historical and SSP Information (E3SM Example)
+
+The concatenation trick demonstrated in Part 2 is also a very useful way of COMBINING historical and SSP information into a handy SINGLE curve. Here is an example of how to do this for a full set of E3SM files: the two historical ones used in Part 2, as well as two files contains information on SSP585 from the same ensemble member.
+
+```{r reade3sm_ssp}
+# paths and filenames for ALL historical and SSP data
+ncpath <- ""   # path (directory)
+dname <- "tas"  # this is the name of the variable you want to look at
+
+ncname1 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_185001-187412.nc"  # E3SM filename
+ncname2 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_187501-189912.nc"  # E3SM filename
+ncname3 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_190001-192412.nc"
+ncname4 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_192501-194912.nc"
+ncname5 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_195001-197412.nc"
+ncname6 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_197501-199912.nc"
+ncname7 <- "tas_Amon_E3SM-1-0_historical_r1i1p1f1_gr_200001-201412.nc"
+ncname8 <- "tas_Amon_E3SM-1-0_ssp585_r1i1p1f1_gr_201501-206412.nc"
+ncname9 <- "tas_Amon_E3SM-1-0_ssp585_r1i1p1f1_gr_206501-209912.nc"
+
+# Concatenate path and filename to get complete location of files
+ncfname1 <- paste(ncpath, ncname1, sep="")
+ncfname2 <- paste(ncpath, ncname2, sep="")
+ncfname3 <- paste(ncpath, ncname3, sep="")
+ncfname4 <- paste(ncpath, ncname4, sep="")
+ncfname5 <- paste(ncpath, ncname5, sep="")
+ncfname6 <- paste(ncpath, ncname6, sep="")
+ncfname7 <- paste(ncpath, ncname7, sep="")
+ncfname8 <- paste(ncpath, ncname8, sep="")
+ncfname9 <- paste(ncpath, ncname9, sep="")
+
+# Open all files
+ncin_e3sm1 <- nc_open(ncfname1)
+ncin_e3sm2 <- nc_open(ncfname2)
+ncin_e3sm3 <- nc_open(ncfname3)
+ncin_e3sm4 <- nc_open(ncfname4)
+ncin_e3sm5 <- nc_open(ncfname5)
+ncin_e3sm6 <- nc_open(ncfname6)
+ncin_e3sm7 <- nc_open(ncfname7)
+ncin_e3sm8 <- nc_open(ncfname8)
+ncin_e3sm9 <- nc_open(ncfname9)
+
+# Get tas information from all files
+tas1 <- ncvar_get(ncin_e3sm1, "tas")
+tas2 <- ncvar_get(ncin_e3sm2, "tas")
+tas3 <- ncvar_get(ncin_e3sm3, "tas")
+tas4 <- ncvar_get(ncin_e3sm4, "tas")
+tas5 <- ncvar_get(ncin_e3sm5, "tas")
+tas6 <- ncvar_get(ncin_e3sm6, "tas")
+tas7 <- ncvar_get(ncin_e3sm7, "tas")
+tas8 <- ncvar_get(ncin_e3sm8, "tas")
+tas9 <- ncvar_get(ncin_e3sm9, "tas")
+
+# Concatenate tas information along the time dimension (dimension 3)
+tas=abind(tas1,tas2,tas3,tas4,tas5,tas6,tas7,tas8,tas9,along=3)
+
+```
+
+The code chunk above has now built us a dataframe containing ALL of the "tas" data for the entire 1850-2100 period! Now we can go ahead and process this information to extract the regional time series for the location of interest. 
+
+NOTE: I am going to use a small hack here, since the units of time in the E3SM files change and it's easier to make a new time axis. I'll use the "seq.Date" method to create a sequence of dates ranging from January 1, 1850 to December 31, 2099 (the start/end dates listed in the set of filenames):
+
+```{r e3smtime_ssp}
+rtime_e3sm=seq.Date(as.Date("1850/01/01"),as.Date("2099/12/01"),by="months")
+
+```
+
+Now we can redo the lat/lon regional extraction:
+```{r getreg_e3sm}
 lats=which(lat >= 32 & lat <= 35)
 lons=which(lon >= 241 & lon <= 243)
 
-tsavg <- apply(tas[lons,lats,],3,mean)
 
-clim <- data.frame(time=rtime, tsavg=tsavg)
-yrclim = clim %>% group_by(year(rtime)) %>% summarize(Tann=mean(tsavg))
-yrclim$dt = unique(year(rtime))
+tsavg_e3sm <- apply(tas[lons,lats,],3,mean)
+```
 
-ggplot(yrclim, aes(dt, Tann-273.15))+geom_point()+labs(y="Southern CA Temperature", x="Year")+ geom_smooth(method="lm")
+What if I Want to Compare Multiple Models?
+
+The final task you may want to consider is how to show multiple models (or multiple future scenarios!) on the same plot. Here I will illustrate how to plot the results from both Parts 1 and 3 on a single ggplot graph: note that in this example, the CESM data only includes the 1920-2005 period (for your homework, you'll want to extend all the time series you plot to include your future scenario information as well). 
+
+NOTE: In this example, the CESM line is very different from E3SM! That is because I'm looking at a relatively small region (southern California), and the simulations are giving fairly different regional patterns. If you use a different region, especially one that is very large (like more than 1000km), the answers will become more similar across models - but not identical.
+
+```{r plot_2models}
+clim_e3sm <- data.frame(time=rtime_e3sm, tsavg=tsavg_e3sm)
+yrclim_e3sm = clim_e3sm %>% group_by(year(rtime_e3sm)) %>% summarize(Tann=mean(tsavg))
+yrclim_e3sm$dt = unique(year(rtime_e3sm))
+
+ggplot() + geom_line(data=yrclim_e3sm, aes(x=dt, y=Tann-273.15), color='blue') + 
+  geom_line(data=yrclim_cesm, aes(x=dt, y=Tann-273.15), color='red') + labs(y="Southern CA Temperature", x="Year")
+
 ```

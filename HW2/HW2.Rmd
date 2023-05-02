@@ -34,7 +34,7 @@ print(ncin)
 ```
 
 
-Historical data for NASA GISS
+Merge historical/SSP3 data for NASA GISS
 
 ```{r}
 # path and filename for data
@@ -45,18 +45,66 @@ ncname1 <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_185001-190012.nc"
 ncname2 <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_190101-195012.nc"
 ncname3 <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_195101-200012.nc"
 ncname4 <- "ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_200101-201412.nc"
+ncname5 <- "ts_Amon_GISS-E2-1-G_ssp370_r1i1p3f1_gn_201501-205012.nc"
+ncname6 <- "ts_Amon_GISS-E2-1-G_ssp370_r1i1p3f1_gn_205101-210012.nc"
 
 ncfname1 <- paste(ncpath, ncname1, sep="")
 ncfname2 <- paste(ncpath, ncname2, sep="")
 ncfname3 <- paste(ncpath, ncname3, sep="")
 ncfname4 <- paste(ncpath, ncname4, sep="")
+ncfname5 <- paste(ncpath, ncname5, sep="")
+ncfname6 <- paste(ncpath, ncname6, sep="")
 
 ncin_giss1 <- nc_open(ncfname1)
 ncin_giss2 <- nc_open(ncfname2)
 ncin_giss3 <- nc_open(ncfname3)
 ncin_giss4 <- nc_open(ncfname4)
+ncin_giss5 <- nc_open(ncfname5)
+ncin_giss6 <- nc_open(ncfname6)
 # print(ncin_giss1)
+
+# Get tas information from all files
+tas1 <- ncvar_get(ncin_giss1, "ts")
+tas2 <- ncvar_get(ncin_giss2, "ts")
+tas3 <- ncvar_get(ncin_giss3, "ts")
+tas4 <- ncvar_get(ncin_giss4, "ts")
+tas5 <- ncvar_get(ncin_giss5, "ts")
+tas6 <- ncvar_get(ncin_giss6, "ts")
+
+
+# Concatenate tas information along the time dimension (dimension 3)
+tas=abind(tas1,tas2,tas3,tas4,tas5,tas6, along=3)
 ```
+
+```{r e3smtime_ssp}
+rtime_giss=seq.Date(as.Date("1850/01/01"),as.Date("2100/12/01"),by="months")
+
+```
+
+
+The following commands read in the longitude and latitude information, and store the lengths of each axis in variables 'nlon' and 'nlat'.
+
+```{r readcoords}
+lon <- ncvar_get(ncin_giss1,"lon")
+nlon <- dim(lon)
+lat <- ncvar_get(ncin_giss1,"lat")
+nlat <- dim(lat)
+
+head(lat)
+head(lon)
+
+```
+
+
+Now we can redo the lat/lon regional extraction:
+```{r getreg_e3sm}
+lats=which(lat >= 32 & lat <= 35)
+lons=which(lon >= 241 & lon <= 243)
+
+
+tsavg_giss <- apply(tas[lons,lats,],3,mean)
+```
+
 
 
 Now once again, we read in the time coordinate information. We need to concatenate the time information from the files to get a time series of the full time period:
