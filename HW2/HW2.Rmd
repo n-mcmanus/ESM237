@@ -20,6 +20,263 @@ library(abind)
 ```
 
 
+
+## Read in data
+
+```{r}
+# path and filename for data
+dname <- "ts"  # this is the name of the variable you want to look at
+
+### Create names for all file paths
+# GISS Historical
+gissHist1 <- "data/ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_185001-190012.nc"  
+gissHist2 <- "data/ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_190101-195012.nc"  
+gissHist3 <- "data/ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_195101-200012.nc" 
+gissHist4 <- "data/ts_Amon_GISS-E2-1-G_historical_r2i1p1f2_gn_200101-201412.nc" 
+
+# GISS SSP3
+giss_ssp3_1 <- "data/ts_Amon_GISS-E2-1-G_ssp370_r1i1p3f1_gn_201501-205012.nc"
+giss_ssp3_2 <- "data/ts_Amon_GISS-E2-1-G_ssp370_r1i1p3f1_gn_205101-210012.nc"
+
+# GISS SSP5
+giss_ssp5_1 <- "data/ts_Amon_GISS-E2-1-G_ssp585_r3i1p5f1_gn_201501-205012.nc"
+giss_ssp5_2 <- "data/ts_Amon_GISS-E2-1-G_ssp585_r3i1p5f1_gn_205101-210012.nc"
+
+
+### Read in data
+# GISS Historical
+gissHist1 <- nc_open(gissHist1)
+gissHist2 <- nc_open(gissHist2)
+gissHist3 <- nc_open(gissHist3)
+gissHist4 <- nc_open(gissHist4)
+
+# GISS ssp3
+giss_ssp3_1 <- nc_open(giss_ssp3_1)
+giss_ssp3_2 <- nc_open(giss_ssp3_2)
+
+# GISS ssp5
+giss_ssp5_1 <- nc_open(giss_ssp5_1)
+giss_ssp5_2 <- nc_open(giss_ssp5_2)
+```
+
+
+## Time stuff
+
+```{r}
+### Adjust the time for each file
+# Historical
+timeH1 <- ncvar_get(gissHist1,"time")
+tunitsH1 <- ncatt_get(gissHist1,"time","units")
+timeH2 <- ncvar_get(gissHist2,"time")
+tunitsH2 <- ncatt_get(gissHist2,"time","units")
+timeH3 <- ncvar_get(gissHist3,"time")
+tunitsH3 <- ncatt_get(gissHist3,"time","units")
+timeH4 <- ncvar_get(gissHist4,"time")
+tunitsH4 <- ncatt_get(gissHist4,"time","units")
+
+# SSP3
+time3_1 <- ncvar_get(giss_ssp3_1,"time")
+tunits3_1 <- ncatt_get(giss_ssp3_1,"time","units")
+time3_2 <- ncvar_get(giss_ssp3_2,"time")
+tunits3_2 <- ncatt_get(giss_ssp3_2,"time","units")
+
+# SSP5
+time5_1 <- ncvar_get(giss_ssp5_1,"time")
+tunits5_1 <- ncatt_get(giss_ssp5_1,"time","units")
+time5_2 <- ncvar_get(giss_ssp5_2,"time")
+tunits5_2 <- ncatt_get(giss_ssp5_2,"time","units")
+
+
+# Concatenate the historical data with the two SSP scenario datasets
+
+time_history = c(timeH1,timeH2, timeH3, timeH4)
+time_ssp3 = c(time3_1, time3_2)
+time_total = c(timeH1,timeH2, timeH3, timeH4, time3_1, time3_2)
+
+
+rtime=seq.Date(as.Date("1850/01/01"),as.Date("2100/12/01"),by="months")
+
+
+# Do the weird time split thing that I think you only need to do once, but im confused about this
+tustr <- strsplit(tunitsH1$value, " ")
+tdstr <- strsplit(unlist(tustr)[3], "-")
+tmonth <- as.integer(unlist(tdstr)[2])
+tday <- as.integer(unlist(tdstr)[3])
+tyear <- as.integer(unlist(tdstr)[1])
+
+# Follow Sam's code to do this weird time thing for both datasets
+rtime_ssp3 <- chron(time_ssp3,origin=c(tmonth, tday, tyear))
+rtime_ssp5 <- chron(time_ssp5,origin=c(tmonth, tday, tyear))
+```
+
+
+## Surface temp
+
+```{r}
+### Pull out the surface temperature for each
+# Historical
+tsH1 <- ncvar_get(gissHist1, "ts")
+tsH2 <- ncvar_get(gissHist2, "ts")
+tsH3 <- ncvar_get(gissHist3, "ts")
+tsH4 <- ncvar_get(gissHist4, "ts")
+
+# SSP3
+ts_3_1 <- ncvar_get(giss_ssp3_1, "ts")
+ts_3_2 <- ncvar_get(giss_ssp3_2, "ts")
+
+# SSP5
+ts_5_1 <- ncvar_get(giss_ssp5_1, "ts")
+ts_5_2 <- ncvar_get(giss_ssp5_2, "ts")
+
+
+### Bind the TS together for each scenario
+ts_ssp3=abind(tsH1,tsH2, tsH3, tsH4, ts_3_1, ts_3_2)
+ts_ssp5=abind(tsH1,tsH3, tsH3, tsH4, ts_5_1, ts_5_2)
+```
+
+## Lat/lon
+
+```{r}
+# Fix the lat and lon
+lon <- ncvar_get(gissHist1,"lon")
+nlon <- dim(lon)
+lat <- ncvar_get(gissHist1,"lat")
+nlat <- dim(lat)
+
+# Choose your location (these are for the amazon)
+lats=which(lat >= -20 & lat <= 5)
+lons=which(lon >= 45 & lon <= 75)
+```
+
+
+# Read in the data for graphing 
+
+```{r}
+# Average the data (i had to mess around with the numeric)
+tsavg_ssp3 <- apply(ts_ssp3[lons,lats,],3,mean)
+tsavg_ssp5 <- apply(ts_ssp5[lons,lats,],3,mean)
+
+
+# Make it a graphable dataframe
+clim_ssp3 <- data.frame(time=time_total, tsavg = tsavg_ssp3)
+clim_ssp5 <- data.frame(time = time_total, tsavg = tsavg_ssp5)
+
+
+# aggregate temp data by annual averages
+yrclim_giss_ssp3 = clim_ssp3 %>% 
+  group_by(year(rtime)) %>%
+  summarize(Tann = mean(tsavg))
+yrclim_giss_ssp3$dt = unique(year(rtime))
+
+yrclim_giss_ssp5 = clim_ssp5 %>% 
+  group_by(year(rtime)) %>% 
+  summarize(Tann=mean(tsavg))
+yrclim_giss_ssp5$dt = unique(year(rtime))
+
+# Read in MIROC model
+yrclim_miroc_ssp3 = read_csv("data/miroc_ssp3_ts_1850_2100.csv")
+yrclim_miroc_ssp5 = read_csv("data/miroc_ssp5_ts_1850_2100.csv")
+
+
+
+# Subset the historical data
+giss_clim_hist <- yrclim_giss_ssp3 %>% 
+  filter(dt <= 2014)
+miroc_clim_hist <- yrclim_miroc_ssp3 %>% 
+  filter(dt <= 2014)
+
+# Subset the SSP3 data
+giss_clim_ssp3 <- yrclim_giss_ssp3 %>% 
+  filter(dt > 2014)
+miroc_clim_ssp3 <- yrclim_miroc_ssp3 %>% 
+  filter(dt > 2014)
+
+# Subset the SSP5 data
+giss_clim_ssp5 <- yrclim_giss_ssp5 %>% 
+  filter(dt > 2014)
+miroc_clim_ssp5 <- yrclim_miroc_ssp5 %>% 
+  filter(dt > 2014)
+
+
+# run linear regression so I can compare the slopes of the data
+giss_clim_hist_lm <- lm((Tann-273.15)~dt,data=giss_clim_hist)
+giss_clim_ssp3_lm <- lm((Tann-273.15)~dt,data=giss_clim_ssp3)
+giss_clim_ssp5_lm <- lm((Tann-273.15)~dt,data=giss_clim_ssp5)
+
+miroc_clim_hist_lm <- lm((Tann-273.15)~dt,data=giss_clim_hist)
+miroc_clim_ssp3_lm <- lm((Tann-273.15)~dt,data=giss_clim_ssp3)
+miroc_clim_ssp5_lm <- lm((Tann-273.15)~dt,data=giss_clim_ssp5)
+```
+
+Wiggly plot
+```{r}
+ggplot() +
+  geom_line(data = yrclim_miroc_ssp3, aes(x = dt, y = Tann - 273.15, color = "red")) +
+  geom_line(data = yrclim_miroc_ssp5, aes(x = dt, y = Tann - 273.15, color = 'blue')) +
+  labs(y = "Concordia Station Temperature (degrees C)", x = "Year", title = "Mean Surface Air Temperature Change in Concordia Station, Antartica", subtitle = "Models Used: NASA GISS-E2.1-G and NASA GISS-E2.1-H", caption = "Smoothing Method Employed: Linear Regression", color = "Legend") + 
+  geom_smooth(method = "lm") +
+  geom_vline(xintercept = 2014, linetype = "dashed") + 
+  scale_color_manual(values = c('blue', 'cadetblue3', 'darkgoldenrod1', 'chocolate1')) +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        legend.position = "right", 
+        legend.title = element_text(size = 14, face = "bold"),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(1.5, "lines"),
+        legend.margin = margin(t = 0, b = 0, r = 10, l = 10),
+        legend.box.just = "right")
+```
+
+Smooth plot
+```{r}
+ggplot() +
+  theme_minimal() +
+  labs(y="Temperature (C)\n", 
+       x="\nYear", 
+       title = "Mean Annual Surface Temperature Trends for Amazon Biome") + 
+  theme(plot.title = element_text(hjust=0.3),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10)) +
+  xlim(1850, 2100) +
+  ylim(27, 32.5) +
+  geom_smooth(data=yrclim_giss_ssp3, aes(dt, Tann-273.15),col = '#2274A5',fill="#2274A5", size =1) +
+  geom_smooth(data=yrclim_giss_ssp5, aes(dt, Tann-273.15), col = '#efa947',fill="#efa947", size = 1) +
+  geom_vline(xintercept=2014,linetype="dashed") +
+  annotate("text", label = "Historical Model\n1850-2015", x = 1950, y = 29, size = 4, colour = "black", family = "sans") +
+  annotate("text", label = "SSP5-8.5", x = 2075, y = 32, size = 4, colour = "#efa947", family = "sans") +
+  annotate("text", label = "SSP3-7.0", x = 2090, y = 29.5, size = 4, colour = "#2274A5", family = "sans")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Read in data
 
 ```{r}

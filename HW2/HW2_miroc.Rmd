@@ -22,11 +22,11 @@ library(abind)
 
 ```{r}
 # path and filename for data
-miroc_hist <- "/Users/katherynmoya/Documents/MESM Year 2/ESM237/ESM237/HW2/data/ts_Amon_MIROC-ES2L_historical_r9i1p1f2_gn_185001-201412.nc"   
+miroc_hist <- "data/ts_Amon_MIROC-ES2L_historical_r9i1p1f2_gn_185001-201412.nc"   
 
-miroc_ssp3 <- "/Users/katherynmoya/Documents/MESM Year 2/ESM237/ESM237/HW2/data/ts_Amon_MIROC-ES2L_ssp370_r8i1p1f2_gn_201501-210012.nc"  # CESM1 filename
+miroc_ssp3 <- "data/ts_Amon_MIROC-ES2L_ssp370_r8i1p1f2_gn_201501-210012.nc"  # CESM1 filename
 
-miroc_ssp5 <- "/Users/katherynmoya/Documents/MESM Year 2/ESM237/ESM237/HW2/data/ts_Amon_MIROC-ES2L_ssp585_r9i1p1f2_gn_201501-210012.nc"   
+miroc_ssp5 <- "data/ts_Amon_MIROC-ES2L_ssp585_r9i1p1f2_gn_201501-210012.nc"   
 
 dname <- "ts"  # this is the name of the variable you want to look at
 
@@ -143,6 +143,7 @@ yrclim_ssp3_c = clim_ssp3 %>%
   summarize(Tann=mean(tsavg_ssp3))
 yrclim_ssp3_c$dt = unique(year(rtime_ssp5))
 
+
 #SSP5
 
 clim_ssp5 <- data.frame(time=rtime_ssp5, tsavg_ssp5=tsavg_ssp5)
@@ -150,6 +151,12 @@ yrclim_ssp5_c = clim_ssp5 %>%
   group_by(year(rtime_ssp5)) %>% 
   summarize(Tann=mean(tsavg_ssp5))
 yrclim_ssp5_c$dt = unique(year(rtime_ssp5))
+
+
+## Export
+write_csv(yrclim_ssp3_c, "data/miroc_ssp3_ts_1850_2100.csv")
+write_csv(yrclim_ssp5_c, "data/miroc_ssp5_ts_1850_2100.csv")
+
 
 #subset the historical data
 
@@ -186,7 +193,7 @@ ggplot() +
         axis.title.x = element_text(family="sans"),
         axis.title.y = element_text(family="sans")) +
   xlim(1850,2100) +
-  geom_smooth(data=yrclim_ssp3_c, aes(dt, Tann-273.15),col = '#2274A5',fill="#2274A5") +
+  geom_smooth(data=blah, aes(dt, Tann-273.15),col = '#2274A5',fill="#2274A5") +
   geom_smooth(data=yrclim_ssp5_c, aes(dt, Tann-273.15), col = '#efa947',fill="#efa947") +
   geom_vline(xintercept=2014,linetype="dashed") +
   annotate("text", label = "Historical Model\n1900-2014", x = 1950, y = 17.5, size = 4, colour = "black", family = "Avenir") +
